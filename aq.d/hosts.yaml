@@ -1,0 +1,35 @@
+---
+hosts:
+
+  carezen-dfw-proddb-01:
+    stack: prod
+    systype: db
+    shortname: proddb-01
+
+  carezen-dfw-proddb-02:
+    stack: prod
+    systype: db
+    shortname: proddb-02
+
+  carezen-dfw-prodproxy-01:
+    stack: prod
+    systype: proxy
+    shortname: prodproxy-01
+
+  carezen-dfw-prodproxy-02:
+    stack: prod
+    systype: proxy
+    shortname: prodproxy-02
+
+  carezen-dfw-util-01:
+    stack: prod
+    systype: util
+    shortname: util-01
+    extra_groups: ['icinga-server']
+    common_crypto_gpg_keys:
+      - { keyfile: root@util-01.dfw.carezen.net.pub,
+          keydir: gpg-public-keys,
+          owner: root, group: root, gpgdir: /root/.gnupg }
+      - { keyfile: root@util-01.dfw.carezen.net.key,
+          keydir: gpg-private-keys,
+          owner: root, group: root, gpgdir: /root/.gnupg }

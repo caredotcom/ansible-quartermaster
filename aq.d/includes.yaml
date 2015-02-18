@@ -1,0 +1,5 @@
+---
+includes:
+
+  raxpy: /ansible/ansible/plugins/inventory/rax.py
+  ec2py: /ansible/ansible/plugins/inventory/ec2.py

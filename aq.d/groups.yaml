@@ -1,0 +1,89 @@
+---
+groups:
+
+  ## Systype-related groups
+
+  api:
+    extra_groups: ['frontend']
+    user_roles: ['users_common']
+
+  app:
+    extra_groups: ['frontend']
+    user_roles: ['users_common']
+
+  db:
+    extra_groups: ['dedicated', 'backend']
+    user_roles: ['users_common', 'users_dbas']
+    common_crypto_gpg_keys:
+      - { keyfile: root@util-01.dfw.carezen.net.pub,
+          keydir: gpg-public-keys,
+          owner: root, group: root, gpgdir: /root/.gnupg }
+
+  proxy:
+    extra_groups: ['dedicated']
+    user_roles: ['users_common']
+
+  util:
+    extra_groups: ['dedicated', 'relayhost']
+    user_roles: ['users_common']
+
+  web:
+    user_roles: ['users_common', 'apache']
+
+  prod-web:
+    web_apache_version: httpd-2.4.10
+
+  ## Virtualization related groups
+
+  # Cloud servers all use their Ansible hostname as their shortname.
+
+  cloud:
+    shortname: "{{ ansible_hostname }}"
+
+  ## Other groups
+
+  # Various things for all hosts. NOTE that these *can* be overridden by
+  # variables in other groups. The special 'all' group is the ONLY group
+  # that can be overridden in this way.
+
+  all:
+
+    conf_dir: /ansible/conf
+    nameservice_nameservers: [ '10.1.1.53, '10.1.2.53' ]
+    os_major_release: '{{ansible_distribution_version | int}}'
+    postfix_relayhost: '[10.1.1.25]'
+    private_dir: /ansible/private
+
+  # Various things for production hosts.
+
+  prod:
+    extra_groups: ['prodsecurity']
+    nameservice_nameservers: [ '10.1.101.53, '10.1.102.53' ]
+    postfix_relayhost: '[10.1.101.25]'
+
+  # App servers are also status servers.
+
+  app:
+    extra_groups: ['status']
+
+  # SMTP relay hosts servers need some Postfix variables.
+
+  relayhost:
+    postfix_inet_interfaces: all
+    postfix_mynetworks: 127.0.0.0/8 10.1.0.0/16
+
+metagroups:
+
+# NOTE that metagroups are processed *after* we've processed extra_groups,
+# which means that (a) you *can* build metagroups based on groups that are
+# defined in extra_groups; (b) you *can't* define extra_groups based on
+# metagroups. If we ever come up with a use case that requires the latter,
+# we can revisit. (This would probably require adding the metagroup logic
+# to each pass through extra_groups, which is probably doable, but
+# complicated.)
+
+  # Create a $stack-$systype group for all stacks and systypes, and also
+  # one for $stack-status.
+
+  - [ {variable: stack}, {variable: systype} ]
+  - [ {variable: stack}, {group: status} ]
