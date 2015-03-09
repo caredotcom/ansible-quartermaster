@@ -141,10 +141,14 @@ def create_groupdict(sourcedict):
     for group in sourcedict[source].keys():
 
       # If this is the special _meta group, just merge all the hostvars
-      # from this source into hostdict.
+      # from each host in this source into the hostvars for each host in
+      # hostdict.
 
       if group == "_meta":
-        hostdict.update(sourcedict[source][group]['hostvars'])
+        for host in sourcedict[source][group]['hostvars']:
+          if host in sourcedict[source][group]['hostvars']:
+            hostdict.setdefault(host,{})
+            hostdict[host].update(sourcedict[source][group]['hostvars'][host])
 
       # Otherwise, this is an actual group that the source provided, so
       # initialize the group in groupdict if necessary, and add the hosts
