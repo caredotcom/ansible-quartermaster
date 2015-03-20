@@ -23,8 +23,8 @@ import yaml
 
 ## parse_arguments
 #
-# Expect one required argument, which must be --list, or --host <hostname>,
-# and optionally one additional argument --yamldir.
+# Expect one required argument, which must be --list, --groups, or --host
+# <hostname>, and optionally one additional argument --yamldir.
 
 def parse_arguments():
 
@@ -32,7 +32,10 @@ def parse_arguments():
 
   group = parser.add_mutually_exclusive_group(required=True)
   group.add_argument('--list',
-                     help='List active servers',
+                     help='List groups (and hosts within them) and vars',
+                     action='store_true')
+  group.add_argument('--groups',
+                     help='List groups (and hosts within them), but NOT vars',
                      action='store_true')
   group.add_argument('--host',
                      help='List details about the specific host')
@@ -457,6 +460,16 @@ for group in groupdict.values():
 # If called with --list, just print the groupdict.
 
 if args.list:
+
+  print json.dumps(groupdict, sys.stdout, indent=2, sort_keys=True)
+
+# If called with --groups, strip the vars out of groupdict, and then print it.
+
+if args.groups:
+
+  groupdict.pop('_meta', None)
+  for group in groupdict.values():
+    group.pop('vars', None)
 
   print json.dumps(groupdict, sys.stdout, indent=2, sort_keys=True)
 
