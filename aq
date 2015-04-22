@@ -244,37 +244,28 @@ def create_groupdict(sourcedict):
 
 ## add_hosts_to_extra_groups
 #
-# Go through the groups in laterdict, looking for groups with an
+# Go through the groups in latergroupdict, looking for groups with an
 # 'extra_groups' variable. For each of those, go through the hosts in that
-# group, and add them to all of the extra groups. Do this repeatedly until
-# nothing changes.
+# group, and add them to all of the extra groups if they aren't already in
+# there.
 
-def add_hosts_to_extra_groups(groupdict, laterdict):
+def add_hosts_to_extra_groups(groupdict, latergroupdict):
 
-  # Keep scanning for more things to do until the modified groupdict is
-  # unchanged from the original.
+  # Go through latergroupdict looking for groups with an extra_groups variable.
 
-  groupdict_orig = {}
-  while groupdict != groupdict_orig:
-
-    # Make a copy of groupdict, so we can check if anything changes.
-
-    groupdict_orig = copy.deepcopy(groupdict)
-
-    # Go through laterdict looking for groups with an extra_groups variable.
-
-    for group in laterdict.keys():
-      if 'extra_groups' in laterdict[group].keys():
-        for extragroup in laterdict[group]['extra_groups']:
-          groupdict.setdefault(group,{})
-          groupdict[group].setdefault('hosts',set())
-          groupdict.setdefault(extragroup,{})
-          groupdict[extragroup].setdefault('hosts',set())
-          groupdict[extragroup]['hosts'].update(groupdict[group]['hosts'])
+  for group in latergroupdict.keys():
+    if 'extra_groups' in latergroupdict[group].keys():
+      for extragroup in latergroupdict[group]['extra_groups']:
+        groupdict.setdefault(group,{})
+        groupdict[group].setdefault('hosts',set())
+        groupdict.setdefault(extragroup,{})
+        groupdict[extragroup].setdefault('hosts',set())
+        groupdict[extragroup]['hosts'].update(groupdict[group]['hosts'])
 
 ## add_hosts_to_metagroups
 #
-# Go through the metagroups specifications, creating new compound groups.
+# Go through the metagroup specifications, creating or updating the
+# compound groups defined there.
 
 def add_hosts_to_metagroups(groupdict, metagroupspecs):
 
@@ -344,18 +335,41 @@ def add_hosts_to_metagroups(groupdict, metagroupspecs):
         groupdict[metagroup].setdefault('hosts',set())
         groupdict[metagroup]['hosts'].add(hostname)
 
+## handle_extra_groups_and_metagroups
+# 
+# Go through the things and do the stuff until we converge.
+# FIXME improve that comment because that is seriously vague.
+
+def handle_extra_groups_and_metagroups(groupdict, later):
+
+  # Keep scanning for more things to do until the modified groupdict is
+  # unchanged from the original.
+
+  groupdict_orig = {}
+  while groupdict != groupdict_orig:
+
+    # Make a copy of groupdict, so we can check if anything changes.
+
+    groupdict_orig = copy.deepcopy(groupdict)
+
+    # Add hosts to extra_groups and metagroups.
+
+    if 'groups' in later.keys():
+      add_hosts_to_extra_groups(groupdict, later['groups'])
+
+    if 'metagroups' in later.keys():
+      add_hosts_to_metagroups(groupdict, later['metagroups'])
+
 ### Main body
 
 # Parse our arguments.
 
 args = parse_arguments()
 
-# Go through each of the .yaml files in the inventory directory, which
-# contain information about static hosts, static groups, and what other
-# dynamic inventory sources to query. Use the --yamldir argument if one
-# was given, or a directory "aq.d" in the same directory as this
-# script by default. Put the information about the hosts into
-# sourcedict['yaml'], and save the groups and includes information for later.
+# Build up a list of YAML files to process. First all of the the .yaml
+# files in the inventory directory; use the --yamldir argument if one was
+# given, or a directory "aq.d" in the same directory as this script
+# by default.
 
 if args.yamldir:
   yamldir = os.path.expanduser(args.yamldir).rstrip("/")
@@ -370,21 +384,26 @@ yamlfiles = glob.glob("{0}/*.yaml".format(yamldir))
 private_yamldir = "/ansible/private/aq.d"
 private_yamlfiles = glob.glob("{0}/*.yaml".format(private_yamldir))
 
-# Parse all the yaml files we found above. Note that variables from files
-# in private_yamldir will override previously specified vars from files in
-# yamldir. Within a group or host, the variables will be merged, so if you
-# set foo in yamldir and bar in private_yamldir, you'll get both; BUT, if
-# the same variable is defined for a given group or host, the one from
-# private_yamldir will take precedence. This is true whether the variable
-# is a simple string or a complex data structure! So if you try to set
-# foo['bar'] for a host in yamldir, and foo['baz'] for a host in
-# private_yamldir, you will *only* get foo['baz'].
+# Parse all the yaml files we found above. Put the information about the
+# hosts into sourcedict (sourcedict['yaml'] actually, but we're creating
+# sourcedict at this point), and save the groups and includes information
+# for later.
+#
+# Note that variables from files in private_yamldir will override
+# previously specified vars from files in yamldir. Within a group or host,
+# the variables will be merged, so if you set foo in yamldir and bar in
+# private_yamldir, you'll get both; BUT, if the same variable is defined
+# for a given group or host, the one from private_yamldir will take
+# precedence. This is true whether the variable is a simple string or a
+# complex data structure! So if you try to set foo['bar'] for a host in
+# yamldir, and foo['baz'] for a host in private_yamldir, you will *only*
+# get foo['baz'].
 
 [sourcedict, later] = parse_yamlfiles(yamlfiles + private_yamlfiles)
 
-# If there were any include variables, their values should be paths to
-# dynamic inventory scripts; run each, and stick the results into a dict
-# for that source.
+# If there was an 'includes' section with other sources, run each of the
+# dynamic inventory scripts defined there, and stick the results into a
+# dict for that source.
 
 if 'includes' in later.keys():
   for source in sorted(later['includes'].keys()):
@@ -400,29 +419,13 @@ if 'includes' in later.keys():
 
 groupdict = create_groupdict(sourcedict)
 
-# Now that we've got everyone in one groupdict, go back through
-# later['groups'] from the YAML files, and process "extra_groups" directives.
+# Now that we've got everything from all sources in one groupdict, go back
+# and handle the the groups and metagroups sections of the 'later' dict.
 
-if 'groups' in later.keys():
-  add_hosts_to_extra_groups(groupdict, later['groups'])
+handle_extra_groups_and_metagroups(groupdict, later)
 
-# Now that everyone is in all the groups they should be in, go back
-# through later['metagroups'] from the YAML files, and process anything
-# defined there.
-#
-# NOTE that this happens *after* we've processed extra_groups, which means
-# that (a) you *can* build metagroups based on groups that are defined in
-# extra_groups; (b) you *can't* define extra_groups based on metagroups. 
-# If we ever come up with a use case that requires the latter, we can
-# revisit. (This would probably require adding the metagroup logic to each
-# pass through extra_groups, which is probably doable, but potentially
-# more complicated.)
-
-if 'metagroups' in later.keys():
-  add_hosts_to_metagroups(groupdict, later['metagroups'])
-
-# Now that everyone who was in any groups is in those groups, we need to
-# find anyone who still *isn't* in any groups, and put them into
+# At this point, everyone who was in any groups should be in those groups,
+# so now find anyone who still *isn't* in any groups, and put them into
 # 'ungrouped'. First, initialize the group.
 
 groupdict.setdefault('ungrouped',{})
@@ -453,9 +456,8 @@ for hostname in hostdict.keys():
   if ungrouped:
     groupdict['ungrouped']['hosts'].add(hostname)
 
-# Now that everyone's in all the groups they're supposed to be in, go back
-# through later['groups'] from the YAML files, and set any group variables
-# that it defined.
+# Now that groupdict has all the groups, go back and add to groupdict any
+# group variables that were defined in later['groups'].
 
 if "groups" in later.keys():
   for group in later['groups'].keys():
