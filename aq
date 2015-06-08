@@ -122,6 +122,7 @@ def parse_yamlfiles (yamlfiles):
             if yamlkey not in later:
               later[yamlkey] = yamldict[yamlkey]
             else:
+              later[yamlkey].setdefault(groupkey,{})
               later[yamlkey][groupkey] = recursive_update(later[yamlkey][groupkey], yamldict[yamlkey][groupkey])
 
         # Anything other than 'hosts', 'includes', 'metagroups', or
