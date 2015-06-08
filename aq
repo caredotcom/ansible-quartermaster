@@ -308,14 +308,16 @@ def add_hosts_to_metagroups(groupdict, metagroupspecs):
             failed = True
             break
 
-        # Otherwise, if the component is a group, and this host is in that
-        # group, add the name of the group to the name of the metagroup;
-        # otherwise (the host isn't in this group), continue to the next
-        # metagroupspec (because this host isn't in this metagroup).
+        # Otherwise, if the component is a group, and this group exists in
+        # groupdict at all and host is in that group, add the name of the
+        # group to the name of the metagroup; otherwise (the host isn't in
+        # this group, or the group doesn't exist at all in groupdict),
+        # continue to the next metagroupspec (because this host isn't in
+        # this metagroup).
 
         if 'group' in component:
           group = component['group']
-          if hostname in groupdict[group]['hosts']:
+          if group in groupdict and hostname in groupdict[group]['hosts']:
             metagroup += group
           else:
             failed = True
