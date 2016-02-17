@@ -38,6 +38,8 @@ def parse_arguments():
   group.add_argument('--groups',
                      help='List groups (and hosts within them), but NOT vars',
                      action='store_true')
+  group.add_argument('--group',
+                     help='List one specific group (and hosts within it), but NOT vars')
   group.add_argument('--host',
                      help='List details about the specific host')
 
@@ -491,6 +493,22 @@ if args.groups:
     group.pop('vars', None)
 
   print json.dumps(groupdict, sys.stdout, indent=2, sort_keys=True)
+
+# If called with --group, strip the vars out of groupdict, and then print
+# just the specified group if it exists, or a list of groups otherwise.
+
+if args.group:
+
+  groupdict.pop('_meta', None)
+
+  if args.group in groupdict:
+    print json.dumps(groupdict[args.group]['hosts'], sys.stdout, indent=2, sort_keys=True)
+
+  else:
+    print "No group {0} found".format(args.group)
+    print "Valid groups:"
+    print json.dumps(sorted(groupdict.keys()), sys.stdout, indent=2, sort_keys=True)
+    sys.exit(1)
 
 # If called with --host, print inventory variables for the specified host.
 # If there's no such host, return an empty JSON struct.
