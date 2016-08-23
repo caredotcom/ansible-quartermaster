@@ -488,7 +488,7 @@ def group(groupdict, group):
   if group in mygroupdict:
     return mygroupdict[group]['hosts']
   else:
-    return {} 
+    return [] 
 
 def host(groupdict, host):
   ''' Return just the vars for the specified host '''
