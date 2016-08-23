@@ -488,7 +488,7 @@ def group(groupdict, group):
   if group in mygroupdict:
     return mygroupdict[group]['hosts']
   else:
-    raise KeyError('Group not found: %s' % ( group ))
+    return {} 
 
 def host(groupdict, host):
   ''' Return just the vars for the specified host '''
@@ -498,4 +498,4 @@ def host(groupdict, host):
   if host in hostdict:
     return hostdict[host]
   else:
-    raise KeyError('Host not found: %s' % (host))
+    return {}
